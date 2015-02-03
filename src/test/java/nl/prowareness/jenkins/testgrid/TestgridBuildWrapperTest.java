@@ -6,13 +6,10 @@ import com.gargoylesoftware.htmlunit.html.HtmlForm;
 import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
 import hudson.model.FreeStyleProject;
-import hudson.model.TaskListener;
-import hudson.tasks.Builder;
+import hudson.util.FormValidation;
 import net.sf.json.JSONObject;
 import nl.prowareness.jenkins.testgrid.utils.DockerClient;
-import org.apache.maven.model.Build;
-import org.apache.tools.ant.launch.Launcher;
-import org.junit.Ignore;
+import nl.prowareness.jenkins.testgrid.utils.DockerClientSetup;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -87,14 +84,14 @@ public class TestgridBuildWrapperTest {
         FreeStyleProject p = runProjectWithWrapper(true, false);
 
         verify(dockerClient, times(1)).runImage(eq(firefoxImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error") + "-ff"));
-        assertEquals("http://" + ipAddress + ":4444/wd/hub",((GridUrlEnvBuilder)p.getBuildersList().get(0)).getGridUrl());
+        assertEquals("http://" + ipAddress + ":4444/wd/hub", ((GridUrlEnvBuilder) p.getBuildersList().get(0)).getGridUrl());
     }
 
     @Test
     public void TestgridBuildWrapper_whenStartedWithOneChromeInstance_shouldStartDockerContainer() throws Exception {
         FreeStyleProject p = runProjectWithWrapper(false, true);
 
-        verify(dockerClient, times(1)).runImage(eq(chromeImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG","error") + "-chrome"));
+        verify(dockerClient, times(1)).runImage(eq(chromeImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error") + "-chrome"));
     }
 
     @Test
@@ -132,6 +129,44 @@ public class TestgridBuildWrapperTest {
 
         assertNotNull(displayName);
         assertTrue(displayName.length() > 0);
+    }
+
+    @Test
+    public void doTestConnection_whenOK_shouldReturnOk() throws IOException, InterruptedException {
+        TestgridBuildWrapper.DescriptorImpl descriptor = new TestgridBuildWrapper.DescriptorImpl();
+        DockerClientSetup setup = mock(DockerClientSetup.class);
+        when(setup.testConnection()).thenReturn(DockerClientSetup.TestResult.OK);
+        descriptor.setDockerClientSetup(setup);
+
+        FormValidation validation = descriptor.doTestConnection();
+
+        assertEquals(FormValidation.Kind.OK, validation.kind);
+    }
+
+    @Test
+    public void doTestConnection_whenPermissionDenied_shouldReturnErrorWithMessage() throws IOException, InterruptedException {
+        TestgridBuildWrapper.DescriptorImpl descriptor = new TestgridBuildWrapper.DescriptorImpl();
+        DockerClientSetup setup = mock(DockerClientSetup.class);
+        when(setup.testConnection()).thenReturn(DockerClientSetup.TestResult.PERMISSION_DENIED);
+        descriptor.setDockerClientSetup(setup);
+
+        FormValidation validation = descriptor.doTestConnection();
+
+        assertEquals(FormValidation.Kind.ERROR, validation.kind);
+        assertEquals(validation.getMessage(),"Permission denied for Jenkins user. Check docker group membership of Jenkins user.");
+    }
+
+    @Test
+    public void doTestConnection_whenOtherError_shouldReturnErrorWithMessage() throws IOException, InterruptedException {
+        TestgridBuildWrapper.DescriptorImpl descriptor = new TestgridBuildWrapper.DescriptorImpl();
+        DockerClientSetup setup = mock(DockerClientSetup.class);
+        when(setup.testConnection()).thenReturn(DockerClientSetup.TestResult.OTHER_ERROR);
+        descriptor.setDockerClientSetup(setup);
+
+        FormValidation validation = descriptor.doTestConnection();
+
+        assertEquals(FormValidation.Kind.ERROR, validation.kind);
+        assertEquals(validation.getMessage(),"Other error has occurred");
     }
 
     private class GridUrlEnvBuilder extends TestBuilder {

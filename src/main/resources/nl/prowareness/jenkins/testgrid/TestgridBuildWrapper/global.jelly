@@ -1,5 +1,5 @@
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
   <!--
     This Jelly script is used to produce the global configuration option.
 
@@ -14,13 +14,14 @@
   -->
   <f:section title="Test grid for Selenium tests">
     <f:entry title="Firefox Docker Image" field="firefoxImage">
-      <f:textbox></f:textbox>
+      <f:textbox/>
     </f:entry>
     <f:entry title="Chrome Docker Image" field="chromeImage">
-      <f:textbox></f:textbox>
+      <f:textbox/>
     </f:entry>
     <f:entry title="Selenium Hub Image" field="hubImage">
-      <f:textbox></f:textbox>
+      <f:textbox/>
     </f:entry>
+    <f:validateButton title="Test Docker setup" method="testConnection" progress="Testing..."/>
   </f:section>
 </j:jelly>

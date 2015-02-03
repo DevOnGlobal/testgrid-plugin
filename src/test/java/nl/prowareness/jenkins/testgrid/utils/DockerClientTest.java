@@ -21,9 +21,6 @@ import java.io.PrintWriter;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.BDDMockito.*;
 
-/**
- * Created by harm on 25-1-15.
- */
 public class DockerClientTest {
 
 
@@ -50,7 +47,7 @@ public class DockerClientTest {
         client.runImage("imagename","containername");
 
         verify(launcher, new VerificationMode() {
-            @Override
+
             public void verify(VerificationData verificationData) {
                 assertEquals(verificationData.getAllInvocations().size(),1);
                 Launcher.ProcStarter ps = (Launcher.ProcStarter) verificationData.getAllInvocations().get(0).getRawArguments()[0];
@@ -67,7 +64,6 @@ public class DockerClientTest {
         client.runImage("imagename","containername","linkimage","linkname");
 
         verify(launcher, new VerificationMode() {
-            @Override
             public void verify(VerificationData verificationData) {
                 assertEquals(verificationData.getAllInvocations().size(),1);
                 Launcher.ProcStarter ps = (Launcher.ProcStarter) verificationData.getAllInvocations().get(0).getRawArguments()[0];
@@ -83,7 +79,7 @@ public class DockerClientTest {
 
         client.killImage("containername");
         verify(launcher, new VerificationMode() {
-            @Override
+
             public void verify(VerificationData verificationData) {
                 assertEquals(verificationData.getAllInvocations().size(), 1);
                 Launcher.ProcStarter ps = (Launcher.ProcStarter) verificationData.getAllInvocations().get(0).getRawArguments()[0];
@@ -99,7 +95,7 @@ public class DockerClientTest {
 
         client.rmImage("containername");
         verify(launcher, new VerificationMode() {
-            @Override
+
             public void verify(VerificationData verificationData) {
                 assertEquals(verificationData.getAllInvocations().size(), 1);
                 Launcher.ProcStarter ps = (Launcher.ProcStarter) verificationData.getAllInvocations().get(0).getRawArguments()[0];
@@ -116,7 +112,7 @@ public class DockerClientTest {
         final Proc p = mock(Proc.class);
 
         given(launcher.launch(any(Launcher.ProcStarter.class))).will(new Answer<Proc>() {
-            @Override
+
             public Proc answer(InvocationOnMock invocationOnMock) throws Throwable {
                 PrintWriter writer = new PrintWriter(((Launcher.ProcStarter) invocationOnMock.getArguments()[0]).stdout());
                 writer.write(String.format("[{'NetworkSettings' : { 'IPAddress': '%s'}}]", ipAddress));
@@ -129,5 +125,4 @@ public class DockerClientTest {
         String returnedIpAddress = client.getIpAddress("containername");
         assertEquals(ipAddress, returnedIpAddress);
     }
-
 }

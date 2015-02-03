@@ -8,17 +8,18 @@ import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.BuildWrapperDescriptor;
+import hudson.util.FormValidation;
 import net.sf.json.JSONObject;
 import nl.prowareness.jenkins.testgrid.utils.DockerClient;
+import nl.prowareness.jenkins.testgrid.utils.DockerClientSetup;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
-/**
- * Created by harm on 23-1-15.
- */
 public class TestgridBuildWrapper extends BuildWrapper {
 
     private final Boolean useFirefox;
@@ -101,11 +102,13 @@ public class TestgridBuildWrapper extends BuildWrapper {
                 containerName = build.getEnvironment(listener).get("BUILD_TAG", null) + "-ff";
                 dockerClient.runImage(getDescriptor().getFirefoxImage(), containerName);
                 ipAddress = dockerClient.getIpAddress(containerName);
+                containers.put("ff", containerName);
             }
             if (useChrome) {
                 containerName = build.getEnvironment(listener).get("BUILD_TAG", null) + "-chrome";
                 dockerClient.runImage(getDescriptor().getChromeImage(), containerName);
                 ipAddress = dockerClient.getIpAddress(containerName);
+                containers.put("chrome", containerName);
             }
         }
 
@@ -130,6 +133,7 @@ public class TestgridBuildWrapper extends BuildWrapper {
         private String firefoxImage;
         private String chromeImage;
         private String hubImage;
+        private DockerClientSetup dockerClientSetup;
 
         public String getFirefoxImage() {
             return firefoxImage;
@@ -167,6 +171,35 @@ public class TestgridBuildWrapper extends BuildWrapper {
 
         public String getHubImage() {
             return hubImage;
+        }
+
+        public void setDockerClientSetup(DockerClientSetup dockerClientSetup) {
+            this.dockerClientSetup = dockerClientSetup;
+        }
+
+        public FormValidation doTestConnection() throws IOException, InterruptedException {
+            DockerClientSetup setup = dockerClientSetup;
+            if (setup == null) {
+                setup = new DockerClientSetup(Runtime.getRuntime());
+            }
+
+            FormValidation result;
+            switch (setup.testConnection()) {
+                case OK:
+                    result = FormValidation.ok("Docker can be successfully executed");
+                    break;
+                case PERMISSION_DENIED:
+                    result = FormValidation.error("Permission denied for Jenkins user. Check docker group membership of Jenkins user.");
+                    break;
+                case OTHER_ERROR:
+                    result = FormValidation.error("Other error has occurred");
+                    break;
+                default:
+                    result = FormValidation.error("Unspecified error");
+                    break;
+            }
+
+            return result;
         }
     }
 }
