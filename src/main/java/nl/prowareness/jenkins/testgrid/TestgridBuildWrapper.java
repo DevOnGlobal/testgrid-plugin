@@ -1,3 +1,27 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2015 Harm Pauw, Prowareness
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 package nl.prowareness.jenkins.testgrid;
 
 import com.google.inject.Inject;
@@ -14,14 +38,18 @@ import nl.prowareness.jenkins.testgrid.utils.DockerClient;
 import nl.prowareness.jenkins.testgrid.utils.DockerClientSetup;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
+@SuppressWarnings("ALL")
 public class TestgridBuildWrapper extends BuildWrapper {
 
+    private static final String LOG_WRAPPER_STARTED = "Test grid for Selenium tests started";
+    private static final String URL_ENV_NAME = "TESTGRID_URL";
+    private static final String GRID_URL_FORMAT = "http://%s:4444/wd/hub";
+    private static final String BUILD_TAG_ENVVAR = "BUILD_TAG";
     private final Boolean useFirefox;
     private final Boolean useChrome;
     private transient DockerClient replacementDockerClient;
@@ -44,28 +72,28 @@ public class TestgridBuildWrapper extends BuildWrapper {
     @Override
     public Environment setUp(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
 
-        listener.getLogger().println("Test grid for Selenium tests started");
+        listener.getLogger().println(LOG_WRAPPER_STARTED);
 
-        final Map<String,String> containers = startContainers(build,launcher,listener);
+        final Map<String, String> containers = startContainers(build, launcher, listener);
         final Launcher l = launcher;
 
         return new Environment() {
 
             @Override
             public void buildEnvVars(Map<String, String> env) {
-                env.put("TESTGRID_URL", String.format("http://%s:4444/wd/hub", ipAddress));
+                env.put(URL_ENV_NAME, String.format(GRID_URL_FORMAT, ipAddress));
             }
 
             @Override
             public boolean tearDown(AbstractBuild build, BuildListener listener) throws IOException, InterruptedException {
-                stopContainers(build,l,listener,containers.values());
+                stopContainers(build, l, listener, containers.values());
                 return super.tearDown(build, listener);
             }
         };
     }
 
     private void stopContainers(AbstractBuild build, Launcher launcher, BuildListener listener, Collection<String> containers) throws IOException, InterruptedException {
-        DockerClient dockerClient = new DockerClient(build,launcher,listener);
+        DockerClient dockerClient = new DockerClient(build, launcher, listener);
         if (replacementDockerClient != null) {
             dockerClient = replacementDockerClient;
         }
@@ -76,36 +104,36 @@ public class TestgridBuildWrapper extends BuildWrapper {
         }
     }
 
-    private Map<String,String> startContainers(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
-        Map<String,String> containers = new HashMap<String, String>();
+    private Map<String, String> startContainers(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
+        Map<String, String> containers = new HashMap<String, String>();
         String containerName;
-        DockerClient dockerClient = new DockerClient(build,launcher,listener);
+        DockerClient dockerClient = new DockerClient(build, launcher, listener);
         if (replacementDockerClient != null) {
             dockerClient = replacementDockerClient;
         }
 
         if (useChrome && useFirefox) {
-            containerName = build.getEnvironment(listener).get("BUILD_TAG", null) + "-hub";
+            containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-hub";
             dockerClient.runImage(getDescriptor().getHubImage(), containerName);
 
-            containers.put("hub",containerName);
+            containers.put("hub", containerName);
             ipAddress = dockerClient.getIpAddress(containerName);
 
-            containerName = build.getEnvironment(listener).get("BUILD_TAG", null) + "-ff";
-            dockerClient.runImage(getDescriptor().getFirefoxImage(), containerName, containers.get("hub"),"hub");
+            containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-ff";
+            dockerClient.runImage(getDescriptor().getFirefoxImage(), containerName, containers.get("hub"), "hub");
             containers.put("ff", containerName);
-            containerName = build.getEnvironment(listener).get("BUILD_TAG", null) + "-chrome";
-            dockerClient.runImage(getDescriptor().getChromeImage(), containerName, containers.get("hub"),"hub");
+            containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-chrome";
+            dockerClient.runImage(getDescriptor().getChromeImage(), containerName, containers.get("hub"), "hub");
             containers.put("chrome", containerName);
         } else {
             if (useFirefox) {
-                containerName = build.getEnvironment(listener).get("BUILD_TAG", null) + "-ff";
+                containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-ff";
                 dockerClient.runImage(getDescriptor().getFirefoxImage(), containerName);
                 ipAddress = dockerClient.getIpAddress(containerName);
                 containers.put("ff", containerName);
             }
             if (useChrome) {
-                containerName = build.getEnvironment(listener).get("BUILD_TAG", null) + "-chrome";
+                containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-chrome";
                 dockerClient.runImage(getDescriptor().getChromeImage(), containerName);
                 ipAddress = dockerClient.getIpAddress(containerName);
                 containers.put("chrome", containerName);
@@ -124,34 +152,65 @@ public class TestgridBuildWrapper extends BuildWrapper {
 
     @Override
     public DescriptorImpl getDescriptor() {
-        return (DescriptorImpl)super.getDescriptor();
+        return (DescriptorImpl) super.getDescriptor();
     }
 
     @Extension
     public static final class DescriptorImpl extends BuildWrapperDescriptor {
 
+        public static final String DISPLAY_NAME = "Test grid for Selenium tests";
+        public static final String OK_MESSAGE = "Docker can be successfully executed";
+        public static final String PERMISSION_DENIED_MESSAGE = "Permission denied for Jenkins user. Check docker group membership of Jenkins user.";
+        public static final String OTHER_ERROR_MESSAGE = "Other error has occurred";
         private String firefoxImage;
         private String chromeImage;
         private String hubImage;
-        private DockerClientSetup dockerClientSetup;
+        private List<DockerImageSettings> dockerImages;
+
+        private transient DockerClientSetup dockerClientSetup;
+
+        public DescriptorImpl() {
+            load();
+        }
 
         public String getFirefoxImage() {
             return firefoxImage;
+        }
+
+        public void setFirefoxImage(String firefoxImage) {
+            this.firefoxImage = firefoxImage;
         }
 
         public String getChromeImage() {
             return chromeImage;
         }
 
-        public DescriptorImpl() {
-            load();
+        public void setChromeImage(String chromeImage) {
+            this.chromeImage = chromeImage;
+        }
+
+        public String getHubImage() {
+            return hubImage;
+        }
+
+        public void setHubImage(String hubImage) {
+            this.hubImage = hubImage;
+        }
+
+        public List<DockerImageSettings> getDockerImages() {
+            if (dockerImages == null) {
+                dockerImages = new ArrayList<DockerImageSettings>();
+            }
+            return dockerImages;
+        }
+
+        public void setDockerImages(List<DockerImageSettings> dockerImages) {
+            this.dockerImages = dockerImages;
         }
 
         @Override
         public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
-            firefoxImage = json.getString("firefoxImage");
-            chromeImage = json.getString("chromeImage");
-            hubImage = json.getString("hubImage");
+            req.bindJSON(this, json);
 
             save();
 
@@ -166,11 +225,7 @@ public class TestgridBuildWrapper extends BuildWrapper {
         @Override
         public String getDisplayName() {
 
-            return "Test grid for Selenium tests";
-        }
-
-        public String getHubImage() {
-            return hubImage;
+            return DISPLAY_NAME;
         }
 
         public void setDockerClientSetup(DockerClientSetup dockerClientSetup) {
@@ -186,17 +241,16 @@ public class TestgridBuildWrapper extends BuildWrapper {
             FormValidation result;
             switch (setup.testConnection()) {
                 case OK:
-                    result = FormValidation.ok("Docker can be successfully executed");
+                    result = FormValidation.ok(OK_MESSAGE);
                     break;
                 case PERMISSION_DENIED:
-                    result = FormValidation.error("Permission denied for Jenkins user. Check docker group membership of Jenkins user.");
+                    result = FormValidation.error(PERMISSION_DENIED_MESSAGE);
                     break;
                 case OTHER_ERROR:
-                    result = FormValidation.error("Other error has occurred");
+                    result = FormValidation.error(OTHER_ERROR_MESSAGE);
                     break;
                 default:
-                    result = FormValidation.error("Unspecified error");
-                    break;
+                    throw new NotImplementedException();
             }
 
             return result;

@@ -1,3 +1,27 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2015 Harm Pauw <h.pauw@prowareness.nl>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 package nl.prowareness.jenkins.testgrid;
 
 import com.gargoylesoftware.htmlunit.html.HtmlButton;
@@ -7,7 +31,6 @@ import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
 import hudson.model.FreeStyleProject;
 import hudson.util.FormValidation;
-import net.sf.json.JSONObject;
 import nl.prowareness.jenkins.testgrid.utils.DockerClient;
 import nl.prowareness.jenkins.testgrid.utils.DockerClientSetup;
 import org.junit.Rule;
@@ -26,6 +49,7 @@ import static org.mockito.Mockito.*;
  *
  */
 
+@SuppressWarnings("ALL")
 public class TestgridBuildWrapperTest {
 
     private DockerClient dockerClient;
@@ -34,6 +58,7 @@ public class TestgridBuildWrapperTest {
     private final static String hubImage = "prowareness/selenium-hub";
     private final static String ipAddress = "192.168.0.2";
 
+    @SuppressWarnings("CanBeFinal")
     @Rule
     public JenkinsRule jenkins = new JenkinsRule();
 
@@ -42,11 +67,11 @@ public class TestgridBuildWrapperTest {
         FreeStyleProject p = jenkins.createFreeStyleProject();
         TestgridBuildWrapper wrapper = new TestgridBuildWrapper(useFirefox,useChrome);
 
-        JSONObject config = new JSONObject();
-        config.put("firefoxImage", firefoxImage);
-        config.put("chromeImage", chromeImage);
-        config.put("hubImage", hubImage);
-        wrapper.getDescriptor().configure(null, config);
+        TestgridBuildWrapper.DescriptorImpl descriptor = wrapper.getDescriptor();
+        descriptor.setChromeImage(chromeImage);
+        descriptor.setFirefoxImage(firefoxImage);
+        descriptor.setHubImage(hubImage);
+        
         p.getBuildWrappersList().add(wrapper.setDockerClient(dockerClient));
         when(dockerClient.getIpAddress(any(String.class))).thenReturn(ipAddress);
         p.getBuildersList().add(new GridUrlEnvBuilder());
