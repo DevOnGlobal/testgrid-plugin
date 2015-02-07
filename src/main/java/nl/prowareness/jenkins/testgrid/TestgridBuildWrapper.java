@@ -36,9 +36,10 @@ import hudson.util.FormValidation;
 import net.sf.json.JSONObject;
 import nl.prowareness.jenkins.testgrid.utils.DockerClient;
 import nl.prowareness.jenkins.testgrid.utils.DockerClientSetup;
+import nl.prowareness.jenkins.testgrid.utils.DockerImageNameValidator;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.IOException;
 import java.util.*;
@@ -202,6 +203,14 @@ public class TestgridBuildWrapper extends BuildWrapper {
             this.dockerClientSetup = dockerClientSetup;
         }
 
+        public FormValidation doCheckHubImage(@QueryParameter String value) {
+            if (DockerImageNameValidator.validate(value)) {
+                return FormValidation.ok();
+            } else {
+                return FormValidation.error("Invalid format.");
+            }
+        }
+
         public FormValidation doTestConnection() throws IOException, InterruptedException {
             DockerClientSetup setup = dockerClientSetup;
             if (setup == null) {
@@ -209,6 +218,7 @@ public class TestgridBuildWrapper extends BuildWrapper {
             }
 
             FormValidation result;
+            result = FormValidation.error(OTHER_ERROR_MESSAGE);
             switch (setup.testConnection()) {
                 case OK:
                     result = FormValidation.ok(OK_MESSAGE);
@@ -219,8 +229,6 @@ public class TestgridBuildWrapper extends BuildWrapper {
                 case OTHER_ERROR:
                     result = FormValidation.error(OTHER_ERROR_MESSAGE);
                     break;
-                default:
-                    throw new NotImplementedException();
             }
 
             return result;

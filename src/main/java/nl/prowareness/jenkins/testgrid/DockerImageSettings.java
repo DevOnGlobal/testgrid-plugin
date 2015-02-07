@@ -27,7 +27,10 @@ package nl.prowareness.jenkins.testgrid;
 import hudson.Extension;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
+import hudson.util.FormValidation;
+import nl.prowareness.jenkins.testgrid.utils.DockerImageNameValidator;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
 
 @SuppressWarnings({"WeakerAccess", "UnusedDeclaration"})
 public class DockerImageSettings extends AbstractDescribableImpl<DockerImageSettings> {
@@ -53,6 +56,18 @@ public class DockerImageSettings extends AbstractDescribableImpl<DockerImageSett
     public static class DescriptorImpl extends Descriptor<DockerImageSettings> {
         public String getDisplayName() {
             return "";
+        }
+
+        public FormValidation doCheckImageName(@QueryParameter String value) {
+            if (DockerImageNameValidator.validate(value)) {
+                return FormValidation.ok();
+            } else {
+                return FormValidation.error("Invalid format.");
+            }
+        }
+
+        public FormValidation doCheckName(@QueryParameter String value) {
+            return value.length() > 0 ? FormValidation.ok() : FormValidation.error("Cannot be empty");
         }
     }
 
