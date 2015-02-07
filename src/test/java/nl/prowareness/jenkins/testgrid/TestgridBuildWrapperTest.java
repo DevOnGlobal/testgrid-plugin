@@ -41,6 +41,7 @@ import org.xml.sax.SAXException;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
@@ -65,11 +66,16 @@ public class TestgridBuildWrapperTest {
     private FreeStyleProject runProjectWithWrapper(Boolean useFirefox, Boolean useChrome) throws Exception {
         dockerClient = mock(DockerClient.class);
         FreeStyleProject p = jenkins.createFreeStyleProject();
-        TestgridBuildWrapper wrapper = new TestgridBuildWrapper(useFirefox,useChrome);
-
+        List<BrowserInstance> instances = new ArrayList<BrowserInstance>();
+        if (useFirefox) {
+            instances.add(new BrowserInstance(firefoxImage));
+        }
+        if (useChrome) {
+            instances.add(new BrowserInstance(chromeImage));
+        }
+        
+        TestgridBuildWrapper wrapper = new TestgridBuildWrapper(instances);
         TestgridBuildWrapper.DescriptorImpl descriptor = wrapper.getDescriptor();
-        descriptor.setChromeImage(chromeImage);
-        descriptor.setFirefoxImage(firefoxImage);
         descriptor.setHubImage(hubImage);
         
         p.getBuildWrappersList().add(wrapper.setDockerClient(dockerClient));
@@ -85,16 +91,12 @@ public class TestgridBuildWrapperTest {
     @Test
     public void globalConfiguration_shouldSaveConfig() throws IOException, SAXException {
         HtmlForm form = jenkins.createWebClient().goTo("configure").getFormByName("config");
-        form.getInputByName("_.firefoxImage").setValueAttribute(firefoxImage);
-        form.getInputByName("_.chromeImage").setValueAttribute(chromeImage);
         form.getInputByName("_.hubImage").setValueAttribute(hubImage);
         ArrayList<HtmlElement> elements = (ArrayList<HtmlElement>) form.getHtmlElementsByTagName("button");
         HtmlButton button = (HtmlButton) elements.get(elements.size() - 1);
         form.submit(button);
 
-        assertEquals(firefoxImage, new TestgridBuildWrapper(false, false).getDescriptor().getFirefoxImage());
-        assertEquals(chromeImage, new TestgridBuildWrapper(false, false).getDescriptor().getChromeImage());
-        assertEquals(hubImage, new TestgridBuildWrapper(false, false).getDescriptor().getHubImage());
+        assertEquals(hubImage, new TestgridBuildWrapper(new ArrayList<BrowserInstance>()).getDescriptor().getHubImage());
     }
 
     @Test
@@ -108,7 +110,7 @@ public class TestgridBuildWrapperTest {
     public void TestgridBuildWrapper_whenStartedWithOneFFInstance_shouldStartDockerContainer() throws Exception {
         FreeStyleProject p = runProjectWithWrapper(true, false);
 
-        verify(dockerClient, times(1)).runImage(eq(firefoxImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error") + "-ff"));
+        verify(dockerClient, times(1)).runImage(eq(firefoxImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error")));
         assertEquals("http://" + ipAddress + ":4444/wd/hub", ((GridUrlEnvBuilder) p.getBuildersList().get(0)).getGridUrl());
     }
 
@@ -116,7 +118,7 @@ public class TestgridBuildWrapperTest {
     public void TestgridBuildWrapper_whenStartedWithOneChromeInstance_shouldStartDockerContainer() throws Exception {
         FreeStyleProject p = runProjectWithWrapper(false, true);
 
-        verify(dockerClient, times(1)).runImage(eq(chromeImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error") + "-chrome"));
+        verify(dockerClient, times(1)).runImage(eq(chromeImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error") ));
     }
 
     @Test
@@ -124,20 +126,8 @@ public class TestgridBuildWrapperTest {
         FreeStyleProject p = runProjectWithWrapper(true, true);
 
         verify(dockerClient, times(1)).runImage(eq(hubImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error") + "-hub"));
-        verify(dockerClient, times(1)).runImage(eq(chromeImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG","error") + "-chrome"), any(String.class), any(String.class));
-        verify(dockerClient, times(1)).runImage(eq(firefoxImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error") + "-ff"), any(String.class), any(String.class));
-    }
-
-    @Test
-    public void getUseFirefox_shouldReturnCorrectValue() {
-        assertFalse(new TestgridBuildWrapper(false, false).getUseFirefox());
-        assertTrue(new TestgridBuildWrapper(true, false).getUseFirefox());
-    }
-
-    @Test
-    public void getUseChrome_shouldReturnCorrectValue() {
-        assertFalse(new TestgridBuildWrapper(false,false).getUseChrome());
-        assertTrue(new TestgridBuildWrapper(false, true).getUseChrome());
+        verify(dockerClient, times(1)).runImage(eq(chromeImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG","error") + "-node2"), any(String.class), any(String.class));
+        verify(dockerClient, times(1)).runImage(eq(firefoxImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error") + "-node1"), any(String.class), any(String.class));
     }
 
     @Test

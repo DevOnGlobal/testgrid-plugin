@@ -2,7 +2,7 @@
 <!--
   ~ The MIT License (MIT)
   ~
-  ~ Copyright (c) 2015 Harm Pauw <h.pauw@prowareness.nl>
+  ~ Copyright (c) 2015 Harm Pauw, Prowareness
   ~
   ~ Permission is hereby granted, free of charge, to any person obtaining a copy
   ~ of this software and associated documentation files (the "Software"), to deal
@@ -24,25 +24,12 @@
   -->
 
 <j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
-  <!--
-    This Jelly script is used to produce the global configuration option.
-
-    Jenkins uses a set of tag libraries to provide uniformity in forms.
-    To determine where this tag is defined, first check the namespace URI,
-    and then look under $JENKINS/views/. For example, <f:section> is defined
-    in $JENKINS/views/lib/form/section.jelly.
-
-    It's also often useful to just check other similar scripts to see what
-    tags they use. Views are always organized according to its owner class,
-    so it should be straightforward to find them.
-  -->
-  <f:section title="Test grid for Selenium tests">
-    <f:entry title="Selenium Hub Image" field="hubImage">
-      <f:textbox/>
+    <f:section title="Browser node">
+    <f:entry field="image">
+        <f:select/>
     </f:entry>
-    <f:entry field="dockerImages" >
-      <f:repeatableProperty field="dockerImages" add="Add image" minimum="1" />
-    </f:entry>
-    <f:validateButton title="Test Docker setup" method="testConnection" progress="Testing..."/>
-  </f:section>
+        <f:entry>
+            <f:repeatableDeleteButton/>
+        </f:entry>
+    </f:section>
 </j:jelly>

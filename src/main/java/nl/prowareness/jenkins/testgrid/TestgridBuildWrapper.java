@@ -50,23 +50,20 @@ public class TestgridBuildWrapper extends BuildWrapper {
     private static final String URL_ENV_NAME = "TESTGRID_URL";
     private static final String GRID_URL_FORMAT = "http://%s:4444/wd/hub";
     private static final String BUILD_TAG_ENVVAR = "BUILD_TAG";
-    private final Boolean useFirefox;
-    private final Boolean useChrome;
+    private List<BrowserInstance> browserInstances;
     private transient DockerClient replacementDockerClient;
     private transient String ipAddress;
 
     @DataBoundConstructor
-    public TestgridBuildWrapper(Boolean useFirefox, Boolean useChrome) {
-        this.useFirefox = useFirefox;
-        this.useChrome = useChrome;
+    public TestgridBuildWrapper(List<BrowserInstance> browserInstances) {
+        this.browserInstances = browserInstances;
     }
 
-    public Boolean getUseFirefox() {
-        return useFirefox;
-    }
-
-    public Boolean getUseChrome() {
-        return useChrome;
+    public List<BrowserInstance> getBrowserInstances() {
+        if (browserInstances == null) {
+            browserInstances = new ArrayList<BrowserInstance>();
+        }
+        return browserInstances;
     }
 
     @Override
@@ -112,32 +109,23 @@ public class TestgridBuildWrapper extends BuildWrapper {
             dockerClient = replacementDockerClient;
         }
 
-        if (useChrome && useFirefox) {
+        if (browserInstances.size() > 1) {
             containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-hub";
             dockerClient.runImage(getDescriptor().getHubImage(), containerName);
 
             containers.put("hub", containerName);
             ipAddress = dockerClient.getIpAddress(containerName);
 
-            containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-ff";
-            dockerClient.runImage(getDescriptor().getFirefoxImage(), containerName, containers.get("hub"), "hub");
-            containers.put("ff", containerName);
-            containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-chrome";
-            dockerClient.runImage(getDescriptor().getChromeImage(), containerName, containers.get("hub"), "hub");
-            containers.put("chrome", containerName);
+            for (int i = 0; i < browserInstances.size(); i++) {
+                containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-node" + (i+1);
+                dockerClient.runImage(browserInstances.get(i).getImage(), containerName, containers.get("hub"), "hub");
+                containers.put(containerName,containerName);
+            }
         } else {
-            if (useFirefox) {
-                containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-ff";
-                dockerClient.runImage(getDescriptor().getFirefoxImage(), containerName);
-                ipAddress = dockerClient.getIpAddress(containerName);
-                containers.put("ff", containerName);
-            }
-            if (useChrome) {
-                containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-chrome";
-                dockerClient.runImage(getDescriptor().getChromeImage(), containerName);
-                ipAddress = dockerClient.getIpAddress(containerName);
-                containers.put("chrome", containerName);
-            }
+            containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null);
+            dockerClient.runImage(browserInstances.get(0).getImage(), containerName);
+            ipAddress = dockerClient.getIpAddress(containerName);
+            containers.put(containerName,containerName);
         }
 
         return containers;
@@ -162,8 +150,6 @@ public class TestgridBuildWrapper extends BuildWrapper {
         public static final String OK_MESSAGE = "Docker can be successfully executed";
         public static final String PERMISSION_DENIED_MESSAGE = "Permission denied for Jenkins user. Check docker group membership of Jenkins user.";
         public static final String OTHER_ERROR_MESSAGE = "Other error has occurred";
-        private String firefoxImage;
-        private String chromeImage;
         private String hubImage;
         private List<DockerImageSettings> dockerImages;
 
@@ -171,22 +157,6 @@ public class TestgridBuildWrapper extends BuildWrapper {
 
         public DescriptorImpl() {
             load();
-        }
-
-        public String getFirefoxImage() {
-            return firefoxImage;
-        }
-
-        public void setFirefoxImage(String firefoxImage) {
-            this.firefoxImage = firefoxImage;
-        }
-
-        public String getChromeImage() {
-            return chromeImage;
-        }
-
-        public void setChromeImage(String chromeImage) {
-            this.chromeImage = chromeImage;
         }
 
         public String getHubImage() {
