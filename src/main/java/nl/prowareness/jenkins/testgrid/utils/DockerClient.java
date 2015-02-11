@@ -32,8 +32,7 @@ import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import net.sf.json.JSONSerializer;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 
 public class DockerClient {
 
@@ -54,49 +53,59 @@ public class DockerClient {
         this.listener = listener;
     }
 
-    public void runImage(String imageName, String containerName) throws IOException, InterruptedException {
-        Launcher.ProcStarter ps = launcher.new ProcStarter();
-        ps.cmdAsSingleString(String.format(DOCKER_RUN_NOLINK, containerName, imageName));
-        ps = ps.pwd(build.getWorkspace()).envs(build.getEnvironment(listener));
-        Proc p = launcher.launch(ps);
-        p.join();
+    public void runImage(String imageName, String containerName) throws IOException, InterruptedException, DockerClientException {
+        runCommand(String.format(DOCKER_RUN_NOLINK, containerName, imageName));
     }
 
-    public void runImage(String imageName, String containerName, String linkImage, String linkName) throws IOException, InterruptedException {
-        Launcher.ProcStarter ps = launcher.new ProcStarter();
-        ps.cmdAsSingleString(String.format(DOCKER_RUN_LINK, containerName, linkImage, linkName, imageName));
-        ps = ps.pwd(build.getWorkspace()).envs(build.getEnvironment(listener));
-        Proc p = launcher.launch(ps);
-        p.join();
+    public void runImage(String imageName, String containerName, String linkImage, String linkName) throws IOException, InterruptedException, DockerClientException {
+        runCommand(String.format(DOCKER_RUN_LINK, containerName, linkImage, linkName, imageName));
     }
 
-    public String getIpAddress(String containerName) throws IOException, InterruptedException {
+    public String getIpAddress(String containerName) throws IOException, InterruptedException, DockerClientException {
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
+        ByteArrayOutputStream errStream = new ByteArrayOutputStream();
         Launcher.ProcStarter ps = launcher.new ProcStarter();
         ps.cmdAsSingleString(String.format(DOCKER_INSPECT, containerName));
-        ps.stdout(stream);
+        ps.stdout(stream).stderr(errStream);
         ps = ps.pwd(build.getWorkspace()).envs(build.getEnvironment(listener));
         Proc p = launcher.launch(ps);
-        p.join();
+        if (p.join() != 0) {
+            throw new DockerClientException(getErrorMessage(errStream));
+        }
 
         JSONArray info = (JSONArray) JSONSerializer.toJSON(stream.toString());
 
         return (String) ((JSONObject) info.getJSONObject(0).get(NETWORK_SETTINGS_FIELD)).get(IP_ADDRESS_FIELD);
     }
 
-    public void killImage(String containerName) throws IOException, InterruptedException {
-        Launcher.ProcStarter ps = launcher.new ProcStarter();
-        ps.cmdAsSingleString(String.format(DOCKER_KILL, containerName));
-        ps = ps.pwd(build.getWorkspace()).envs(build.getEnvironment(listener));
-        Proc p = launcher.launch(ps);
-        p.join();
+    public void killImage(String containerName) throws IOException, InterruptedException, DockerClientException {
+        runCommand(String.format(String.format(DOCKER_KILL, containerName)));
     }
 
-    public void rmImage(String containerName) throws IOException, InterruptedException {
+    public void rmImage(String containerName) throws IOException, InterruptedException, DockerClientException {
+        runCommand(String.format(String.format(DOCKER_RM, containerName)));
+    }
+
+    private void runCommand(String command) throws IOException, InterruptedException, DockerClientException {
+        ByteArrayOutputStream errStream = new ByteArrayOutputStream();
         Launcher.ProcStarter ps = launcher.new ProcStarter();
-        ps.cmdAsSingleString(String.format(DOCKER_RM, containerName));
+        ps.cmdAsSingleString(command);
         ps = ps.pwd(build.getWorkspace()).envs(build.getEnvironment(listener));
+        ps.stderr(errStream);
         Proc p = launcher.launch(ps);
-        p.join();
+        if (p.join() != 0) {
+            throw new DockerClientException(getErrorMessage(errStream));
+        }
+    }
+
+
+    private String getErrorMessage(OutputStream errStream) throws IOException {
+        return errStream.toString();
+    }
+    
+    public static class DockerClientException extends Exception {
+        public DockerClientException(String message) {
+            super(message);
+        }
     }
 }

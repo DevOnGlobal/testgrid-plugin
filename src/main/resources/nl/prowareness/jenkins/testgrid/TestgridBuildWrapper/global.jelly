@@ -40,7 +40,7 @@
     <f:entry title="Selenium Hub Image" field="hubImage">
       <f:textbox/>
     </f:entry>
-    <f:entry field="dockerImages" >
+    <f:entry field="dockerImages" title="Brower Images">
       <f:repeatableProperty field="dockerImages" add="Add image" minimum="1" />
     </f:entry>
     <f:validateButton title="Test Docker setup" method="testConnection" progress="Testing..."/>

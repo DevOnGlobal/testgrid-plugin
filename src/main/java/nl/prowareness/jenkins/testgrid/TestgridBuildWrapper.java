@@ -30,6 +30,7 @@ import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
+import hudson.model.Result;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.BuildWrapperDescriptor;
 import hudson.util.FormValidation;
@@ -51,6 +52,8 @@ public class TestgridBuildWrapper extends BuildWrapper {
     private static final String URL_ENV_NAME = "TESTGRID_URL";
     private static final String GRID_URL_FORMAT = "http://%s:4444/wd/hub";
     private static final String BUILD_TAG_ENVVAR = "BUILD_TAG";
+    public static final String ERROR_STARTING_CONTAINERS = "Error starting containers:";
+    public static final String ERROR_STOPPING_CONTAINERS = "Error stopping containers:";
     private List<BrowserInstance> browserInstances;
     private transient DockerClient replacementDockerClient;
     private transient String ipAddress;
@@ -70,27 +73,41 @@ public class TestgridBuildWrapper extends BuildWrapper {
     @Override
     public Environment setUp(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
 
-        listener.getLogger().println(LOG_WRAPPER_STARTED);
 
-        final Map<String, String> containers = startContainers(build, launcher, listener);
-        final Launcher l = launcher;
+        try {
+            final Map<String, String> containers = startContainers(build, launcher, listener);
+            final Launcher l = launcher;
+            listener.getLogger().println(LOG_WRAPPER_STARTED);
 
-        return new Environment() {
+            return new Environment() {
 
-            @Override
-            public void buildEnvVars(Map<String, String> env) {
-                env.put(URL_ENV_NAME, String.format(GRID_URL_FORMAT, ipAddress));
-            }
+                @Override
+                public void buildEnvVars(Map<String, String> env) {
+                    env.put(URL_ENV_NAME, String.format(GRID_URL_FORMAT, ipAddress));
+                }
 
-            @Override
-            public boolean tearDown(AbstractBuild build, BuildListener listener) throws IOException, InterruptedException {
-                stopContainers(build, l, listener, containers.values());
-                return super.tearDown(build, listener);
-            }
-        };
+                @Override
+                public boolean tearDown(AbstractBuild build, BuildListener listener) throws IOException, InterruptedException {
+                    try {
+                        stopContainers(build, l, listener, containers.values());
+                    } catch (DockerClient.DockerClientException ex) {
+                        listener.getLogger().println(ERROR_STOPPING_CONTAINERS);
+                        listener.getLogger().println(ex.getMessage());
+                        build.setResult(Result.FAILURE);
+                        return false;
+                    }
+                    return super.tearDown(build, listener);
+                }
+            };
+        } catch (DockerClient.DockerClientException ex) {
+            listener.getLogger().println(ERROR_STARTING_CONTAINERS);
+            listener.getLogger().println(ex.getMessage());
+            build.setResult(Result.FAILURE);
+            return null;
+        }
     }
 
-    private void stopContainers(AbstractBuild build, Launcher launcher, BuildListener listener, Collection<String> containers) throws IOException, InterruptedException {
+    private void stopContainers(AbstractBuild build, Launcher launcher, BuildListener listener, Collection<String> containers) throws IOException, InterruptedException, DockerClient.DockerClientException {
         DockerClient dockerClient = new DockerClient(build, launcher, listener);
         if (replacementDockerClient != null) {
             dockerClient = replacementDockerClient;
@@ -102,7 +119,7 @@ public class TestgridBuildWrapper extends BuildWrapper {
         }
     }
 
-    private Map<String, String> startContainers(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
+    private Map<String, String> startContainers(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException, DockerClient.DockerClientException {
         Map<String, String> containers = new HashMap<String, String>();
         String containerName;
         DockerClient dockerClient = new DockerClient(build, launcher, listener);

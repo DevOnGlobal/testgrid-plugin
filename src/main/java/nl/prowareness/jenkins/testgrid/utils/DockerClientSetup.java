@@ -51,6 +51,7 @@ public class DockerClientSetup {
 
                 output += line;
             }
+            reader.close();
             if (output.contains(PERMISSION_DENIED)) {
                 return TestResult.PERMISSION_DENIED;
             } else {
