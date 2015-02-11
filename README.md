@@ -10,6 +10,10 @@ This Jenkins Plugin provides an easy way to create an on-demand Selenium Grid th
 build. After the build is complete, the Grid is automatically stopped and removed. It uses Docker for
 the provisioning of the Grid.
 
+Of course there are other Jenkins plugins that you can use to call Docker. The difference is that this
+plugin specifically uses Docker to create an environment for Selenium and that you don't need to 
+configure yourself. 
+
 Prerequisites
 -------------
 
@@ -71,3 +75,5 @@ project, you can pass this environment variable in "Goals and options" like `tes
 In your code, you can access it using `System.getProperty("remotewebdriverurl")`.
  
 - Save your configuration.
+
+** By http://prowareness.nl **
