@@ -72,15 +72,12 @@ public class TestgridBuildWrapper extends BuildWrapper {
 
     @Override
     public Environment setUp(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
-
-
         try {
             final Map<String, String> containers = startContainers(build, launcher, listener);
             final Launcher l = launcher;
             listener.getLogger().println(LOG_WRAPPER_STARTED);
 
             return new Environment() {
-
                 @Override
                 public void buildEnvVars(Map<String, String> env) {
                     env.put(URL_ENV_NAME, String.format(GRID_URL_FORMAT, ipAddress));

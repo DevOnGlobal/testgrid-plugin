@@ -27,9 +27,7 @@ package nl.prowareness.jenkins.testgrid;
 import com.gargoylesoftware.htmlunit.html.HtmlButton;
 import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlForm;
-import hudson.model.AbstractBuild;
-import hudson.model.BuildListener;
-import hudson.model.FreeStyleProject;
+import hudson.model.*;
 import hudson.util.FormValidation;
 import nl.prowareness.jenkins.testgrid.utils.DockerClient;
 import nl.prowareness.jenkins.testgrid.utils.DockerClientSetup;
@@ -44,6 +42,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.*;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 /**
@@ -59,12 +58,17 @@ public class TestgridBuildWrapperTest {
     private final static String hubImage = "prowareness/selenium-hub";
     private final static String ipAddress = "192.168.0.2";
 
-    @SuppressWarnings("CanBeFinal")
     @Rule
-    public JenkinsRule jenkins = new JenkinsRule();
+    public final JenkinsRule jenkins = new JenkinsRule();
 
     private FreeStyleProject runProjectWithWrapper(Boolean useFirefox, Boolean useChrome) throws Exception {
-        dockerClient = mock(DockerClient.class);
+        return runProjectWithWrapper(useFirefox,useChrome,null);
+    }
+    
+    private FreeStyleProject runProjectWithWrapper(Boolean useFirefox, Boolean useChrome, DockerClient client) throws Exception {
+        if (client == null) {
+            dockerClient = mock(DockerClient.class);
+        }
         FreeStyleProject p = jenkins.createFreeStyleProject();
         List<BrowserInstance> instances = new ArrayList<BrowserInstance>();
         if (useFirefox) {
@@ -82,7 +86,7 @@ public class TestgridBuildWrapperTest {
         when(dockerClient.getIpAddress(any(String.class))).thenReturn(ipAddress);
         p.getBuildersList().add(new GridUrlEnvBuilder());
         jenkins.getInstance().rebuildDependencyGraph();
-        jenkins.buildAndAssertSuccess(p);
+        p.scheduleBuild(new Cause.UserIdCause());
         jenkins.waitUntilNoActivity();
 
         return p;
@@ -118,7 +122,7 @@ public class TestgridBuildWrapperTest {
     public void TestgridBuildWrapper_whenStartedWithOneChromeInstance_shouldStartDockerContainer() throws Exception {
         FreeStyleProject p = runProjectWithWrapper(false, true);
 
-        verify(dockerClient, times(1)).runImage(eq(chromeImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error") ));
+        verify(dockerClient, times(1)).runImage(eq(chromeImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error")));
     }
 
     @Test
@@ -128,6 +132,14 @@ public class TestgridBuildWrapperTest {
         verify(dockerClient, times(1)).runImage(eq(hubImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error") + "-hub"));
         verify(dockerClient, times(1)).runImage(eq(chromeImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG","error") + "-node2"), any(String.class), any(String.class));
         verify(dockerClient, times(1)).runImage(eq(firefoxImage), eq(p.getLastBuild().getEnvironment(jenkins.createTaskListener()).get("BUILD_TAG", "error") + "-node1"), any(String.class), any(String.class));
+    }
+
+    @Test
+    public void TestgridBuildWrapper_whenStartingContainersErrs_Abort() throws Exception {
+        dockerClient = mock(DockerClient.class);
+        doThrow(new DockerClient.DockerClientException("error")).when(dockerClient).runImage(anyString(), anyString());
+        FreeStyleProject p = runProjectWithWrapper(true,false,dockerClient);
+        assertEquals(Result.FAILURE,p.getLastBuild().getResult());
     }
 
     @Test

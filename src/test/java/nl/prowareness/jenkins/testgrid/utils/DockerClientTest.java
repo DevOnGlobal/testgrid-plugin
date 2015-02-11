@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 import static org.mockito.BDDMockito.*;
 
 public class DockerClientTest {
@@ -66,7 +67,7 @@ public class DockerClientTest {
 
 
     @Test
-    public void runImage_withStandaloneImage_shouldStartDockerContainer() throws IOException, InterruptedException {
+    public void runImage_withStandaloneImage_shouldStartDockerContainer() throws IOException, InterruptedException, DockerClient.DockerClientException {
         DockerClient client = new DockerClient(build,launcher,listener);
 
         client.runImage("imagename","containername");
@@ -83,7 +84,7 @@ public class DockerClientTest {
     }
 
     @Test
-    public void runImage_withHub_shouldStartDockerContainer() throws IOException, InterruptedException {
+    public void runImage_withHub_shouldStartDockerContainer() throws IOException, InterruptedException, DockerClient.DockerClientException {
         DockerClient client = new DockerClient(build,launcher,listener);
 
         client.runImage("imagename","containername","linkimage","linkname");
@@ -99,7 +100,7 @@ public class DockerClientTest {
     }
 
     @Test
-    public void killImage__shouldKillDockerContainer() throws IOException, InterruptedException {
+    public void killImage__shouldKillDockerContainer() throws IOException, InterruptedException, DockerClient.DockerClientException {
         DockerClient client = new DockerClient(build,launcher,listener);
 
         client.killImage("containername");
@@ -115,7 +116,7 @@ public class DockerClientTest {
     }
 
     @Test
-    public void rmImage__shouldRemoveDockerContainer() throws IOException, InterruptedException {
+    public void rmImage__shouldRemoveDockerContainer() throws IOException, InterruptedException, DockerClient.DockerClientException {
         DockerClient client = new DockerClient(build,launcher,listener);
 
         client.rmImage("containername");
@@ -131,7 +132,7 @@ public class DockerClientTest {
     }
 
     @Test
-    public void getIpAddress_shouldReturnIpAddress() throws IOException, InterruptedException {
+    public void getIpAddress_shouldReturnIpAddress() throws IOException, InterruptedException, DockerClient.DockerClientException {
         final String ipAddress = "192.168.0.3";
         DockerClient client = new DockerClient(build,launcher,listener);
         final Proc p = mock(Proc.class);
@@ -150,4 +151,30 @@ public class DockerClientTest {
         String returnedIpAddress = client.getIpAddress("containername");
         assertEquals(ipAddress, returnedIpAddress);
     }
+    
+    @Test
+    public void whenCommandErrors_shouldThrowException() throws IOException, InterruptedException {
+        DockerClient client = new DockerClient(build,launcher,listener);
+        final Proc p = mock(Proc.class);
+        final String errMessage = "error occured";
+        
+        given(p.join()).willReturn(1);
+        given(launcher.launch(any(Launcher.ProcStarter.class))).will(new Answer<Proc>() {
+
+            public Proc answer(InvocationOnMock invocationOnMock) throws Throwable {
+                PrintWriter writer = new PrintWriter(((Launcher.ProcStarter) invocationOnMock.getArguments()[0]).stderr());
+                writer.write(errMessage);
+                writer.close();
+
+                return p;
+            }
+        });
+ 
+        try {
+            client.rmImage("image");
+            fail("No exception thrown");
+        } catch (DockerClient.DockerClientException ex) {
+            assertEquals(errMessage,ex.getMessage());
+        }
+    } 
 }
