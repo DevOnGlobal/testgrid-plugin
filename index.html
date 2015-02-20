@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="Testgrid for Selenium tests plugin : Jenkins plugin for setting up an on-demand Selenium Grid using Docker.">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Testgrid for Selenium tests plugin</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/Prowareness/testgrid-plugin">View on GitHub</a>
+
+          <h1 id="project_title">Testgrid for Selenium tests plugin</h1>
+          <h2 id="project_tagline">Jenkins plugin for setting up an on-demand Selenium Grid using Docker.</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/Prowareness/testgrid-plugin/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/Prowareness/testgrid-plugin/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h1>
+<a id="testgrid-for-selenium-tests-jenkins-plugin" class="anchor" href="#testgrid-for-selenium-tests-jenkins-plugin" aria-hidden="true"><span class="octicon octicon-link"></span></a>Testgrid for Selenium tests Jenkins Plugin</h1>
+
+<blockquote>
+<p>Because developers and teams have better things to do with their time.</p>
+</blockquote>
+
+<h2>
+<a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span class="octicon octicon-link"></span></a>Introduction</h2>
+
+<p>This Jenkins Plugin provides an easy way to create an on-demand Selenium Grid that you can use in your
+build. After the build is complete, the Grid is automatically stopped and removed. It uses Docker for
+the provisioning of the Grid.</p>
+
+<p>Of course there are other Jenkins plugins that you can use to call Docker. The difference is that this
+plugin specifically uses Docker to create an environment for Selenium and that you don't need to 
+configure yourself. </p>
+
+<h2>
+<a id="prerequisites" class="anchor" href="#prerequisites" aria-hidden="true"><span class="octicon octicon-link"></span></a>Prerequisites</h2>
+
+<p>In order to use the plugin, you'll need to have the following things installed:</p>
+
+<ul>
+<li>Jenkins</li>
+<li>Docker</li>
+</ul>
+
+<p>This plugin uses the command line client instead of the Java implementation. The reason for this is that
+the Java version can only use a TCP connection to communicate with the Docker server, which can have some
+security issues. The command line client uses a UNIX socket for communication ad therefore has a different
+ security model. Perhaps in the future, the TCP implementation is also added to the plugin.</p>
+
+<p>In order for Jenkins to call Docker, it needs access to the UNIX socket. The easiest way to do this is to
+add the jenkins user (or whatever user your Jenkins service uses) to the docker group. Don't forget to
+restart Jenkins or use <code>newgrp</code> in order to refresh permissions.</p>
+
+<p>There are a couple of pre-made Docker images on Docker Hub that you can use. These are</p>
+
+<ul>
+<li><a href="https://registry.hub.docker.com/u/prowareness/selenium-hub/">prowareness/selenium-hub</a></li>
+<li><a href="https://registry.hub.docker.com/u/prowareness/selenium-node-ff/">prowareness/selenium-node-ff</a></li>
+<li><a href="https://registry.hub.docker.com/u/prowareness/selenium-node-chrome/">prowareness/selenium-node-chrome</a></li>
+</ul>
+
+<p>Basically, every image that runs Selenium Standalone and exposes port 4444 is suitable. In fact, we encourage
+you to create (and share) your own images. You can look at the Docker build file to get some inspiration. 
+Use <code>docker pull</code> to download the images that you want to use.</p>
+
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+<p>Installation is easy, just install the plugin using the Plugin Manager in Jenkins like any other plugin.</p>
+
+<h2>
+<a id="global-configuration" class="anchor" href="#global-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Global configuration</h2>
+
+<p>Before you can use the plugin in your jobs, you have to do some global configuration once.</p>
+
+<ul>
+<li>Open Global Configuration of Jenkins (Manager Jenkins -&gt; Configure System) and scroll to the section
+"Test grid for Selenium tests"</li>
+<li>Fill in the Docker Image to use for Hub. This image is used when you configure multiple browser nodes.</li>
+<li>Add the browser images that you'd like to use. You have to give it a name and the name of the Docker image. 
+You can optionally use a tag in this image field as well (eg. <code>prowareness/selenium-node-ff:latest</code>).</li>
+<li>Test your Docker setup using the Test Docker Setup button. This will try to invoke the Docker client.</li>
+</ul>
+
+<h2>
+<a id="job-configuration" class="anchor" href="#job-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Job configuration</h2>
+
+<p>After you configured the plugin, you can configure your Jenkins job.</p>
+
+<ul>
+<li>Open the Job Configuration of a job.</li>
+<li>In the section "Build Environment", you'll find a checkbox "Test grid for Selenium tests". Check this checkbox.
+A label "Browser Nodes" with a button "Add" will appear.</li>
+<li>Add all browser nodes needed by clicking the "Add" button and selecting the browser image (configured in the
+global configuration).</li>
+</ul>
+
+<p>During a build, an environment variable named <code>TESTGRID_URL</code> will be created. You can pass this environment
+variable to your test suite so it can use it in its RemoteWebDriver object. For example, when you have a Maven 
+project, you can pass this environment variable in "Goals and options" like <code>test -Dremotewebdriverurl=$TESTGRID_URL</code>. 
+In your code, you can access it using <code>System.getProperty("remotewebdriverurl")</code>.</p>
+
+<ul>
+<li>Save your configuration.</li>
+</ul>
+
+<p>** By <a href="http://prowareness.nl">http://prowareness.nl</a> **</p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Testgrid for Selenium tests plugin maintained by <a href="https://github.com/Prowareness">Prowareness</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
