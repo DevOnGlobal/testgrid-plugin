@@ -57,10 +57,12 @@ public class TestgridBuildWrapper extends BuildWrapper {
     private List<BrowserInstance> browserInstances;
     private transient DockerClient replacementDockerClient;
     private transient String ipAddress;
+    private boolean retainContainersOnFailure;
 
     @DataBoundConstructor
-    public TestgridBuildWrapper(List<BrowserInstance> browserInstances) {
+    public TestgridBuildWrapper(List<BrowserInstance> browserInstances, boolean retainContainersOnFailure) {
         this.browserInstances = browserInstances;
+        this.retainContainersOnFailure = retainContainersOnFailure;
     }
 
     public List<BrowserInstance> getBrowserInstances() {
@@ -86,7 +88,9 @@ public class TestgridBuildWrapper extends BuildWrapper {
                 @Override
                 public boolean tearDown(AbstractBuild build, BuildListener listener) throws IOException, InterruptedException {
                     try {
-                        stopContainers(build, l, listener, containers.values());
+                        if (build.getResult() == Result.SUCCESS || !retainContainersOnFailure) {
+                            stopContainers(build, l, listener, containers.values());
+                        }
                     } catch (DockerClient.DockerClientException ex) {
                         listener.getLogger().println(ERROR_STOPPING_CONTAINERS);
                         listener.getLogger().println(ex.getMessage());
