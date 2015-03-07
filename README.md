@@ -14,6 +14,15 @@ Of course there are other Jenkins plugins that you can use to call Docker. The d
 plugin specifically uses Docker to create an environment for Selenium and that you don't need to 
 configure yourself. 
 
+Build it yourself
+-----------------
+
+If you want to build and package the plugin yourself, just run
+
+    mvn package
+
+This will compile the code, run the unit tests and package the plugin to `target/testgrid.hpi`.
+
 Prerequisites
 -------------
 
