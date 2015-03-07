@@ -41,7 +41,7 @@
 
   <name>Testgrid Plugin</name>
   <description>Plugin to dynamically provision docker containers for Selenium tests</description>
-  <url>https://wiki.jenkins-ci.org/display/JENKINS/Testgrid+Plugin</url>
+  <url>http://prowareness.github.io/testgrid-plugin/</url>
   <licenses>
     <license>
       <name>MIT License</name>
