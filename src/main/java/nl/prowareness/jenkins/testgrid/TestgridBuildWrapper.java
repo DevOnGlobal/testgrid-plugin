@@ -37,6 +37,7 @@ import hudson.util.FormValidation;
 import net.sf.json.JSONObject;
 import nl.prowareness.jenkins.testgrid.utils.DockerClient;
 import nl.prowareness.jenkins.testgrid.utils.DockerClientSetup;
+import nl.prowareness.jenkins.testgrid.utils.DockerContainerNameBuilder;
 import nl.prowareness.jenkins.testgrid.utils.DockerImageNameValidator;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -129,19 +130,19 @@ public class TestgridBuildWrapper extends BuildWrapper {
         }
 
         if (browserInstances.size() > 1) {
-            containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-hub";
+            containerName = new DockerContainerNameBuilder(build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-hub").toString();
             dockerClient.runImage(getDescriptor().getHubImage(), containerName);
 
             containers.put("hub", containerName);
             ipAddress = dockerClient.getIpAddress(containerName);
 
             for (int i = 0; i < browserInstances.size(); i++) {
-                containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-node" + (i+1);
+                containerName = new DockerContainerNameBuilder(build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null) + "-node" + (i+1)).toString();
                 dockerClient.runImage(browserInstances.get(i).getImage(), containerName, containers.get("hub"), "hub");
                 containers.put(containerName,containerName);
             }
         } else {
-            containerName = build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null);
+            containerName = new DockerContainerNameBuilder(build.getEnvironment(listener).get(BUILD_TAG_ENVVAR, null)).toString();
             dockerClient.runImage(browserInstances.get(0).getImage(), containerName);
             ipAddress = dockerClient.getIpAddress(containerName);
             containers.put(containerName,containerName);
