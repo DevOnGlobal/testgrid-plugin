@@ -1,6 +1,8 @@
 Testgrid for Selenium tests Jenkins Plugin
 ==========================================
 
+![Build status](https://travis-ci.org/Prowareness/testgrid-plugin.svg?branch=master)
+
 > Because developers and teams have better things to do with their time.
 
 Introduction
@@ -51,7 +53,7 @@ you to create (and share) your own images. You can look at the Docker build file
 Use `docker pull` to download the images that you want to use.
 
 Installation
-------------
+-------------
 
 Installation is easy, just install the plugin using the Plugin Manager in Jenkins like any other plugin.
 
